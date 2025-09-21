@@ -182,51 +182,38 @@ def _get_context_real(telescope_id, req):
     imager_root = get_imager_root(telescope_id, req)
     online = check_api_state(telescope_id)
     client_master = get_client_master(telescope_id)
+
     segments = req.relative_uri.lstrip("/").split("/", 1)
     partial_path = segments[1] if len(segments) > 1 else segments[0]
-    experimental = Config.experimental
-    confirm = Config.confirm
-    uitheme = Config.uitheme
-    defgain = Config.init_gain
-    if telescope_id > 0:
-        telescope = get_telescope(telescope_id)
-    else:
-        telescope = {
+
+    telescope = (
+        get_telescope(telescope_id)
+        if telescope_id > 0
+        else {
             "device_num": 0,
             "name": "Seestar Federation",
             "ip_address": get_ip(),
         }
+    )
 
-    current_item = None
-    is_stacking = False
     scheduler_state = do_action_device(
         "get_event_state", telescope_id, {"event_name": "scheduler"}
     )
-    if scheduler_state:
-        current_item = (
-            scheduler_state.get("Value", {}).get("result", {}).get("cur_scheduler_item")
-        )
-        is_stacking = bool(
-            scheduler_state.get("Value", {}).get("result", {}).get("is_stacking")
-        )
 
-    current_stack = None
+    current_item = pydash.get(scheduler_state, "Value.result.cur_scheduler_item", None)
+    is_stacking = bool(pydash.get(scheduler_state, "Value.result.is_stacking", False))
+
     stack_state = do_action_device(
         "get_event_state", telescope_id, {"event_name": "Stack"}
     )
-    if stack_state:
-        current_stack = stack_state.get("Value", {}).get("result", {})
+
+    current_stack = pydash.get(stack_state, "Value.result")
 
     current_exp = None
-    if telescope_id > 0:
-        if is_stacking:
-            exp_value = method_sync("get_camera_exp_and_bin", telescope_id)
-            if exp_value:
-                current_exp = exp_value.get("exposure")
-                if current_exp is not None:
-                    current_exp = int(current_exp) / 1000000
-                else:  # in case we are dealing with federation with device id 0
-                    current_exp = 0
+    if telescope_id > 0 and is_stacking:
+        exp_value = method_sync("get_camera_exp_and_bin", telescope_id)
+        raw_exp = pydash.get(exp_value, "exposure")
+        current_exp = int(raw_exp) / 1000000 if raw_exp is not None else 0
 
     return {
         "telescope": telescope,
@@ -235,26 +222,27 @@ def _get_context_real(telescope_id, req):
         "partial_path": partial_path,
         "online": online,
         "imager_root": imager_root,
-        "experimental": experimental,
-        "confirm": confirm,
-        "uitheme": uitheme,
+        "experimental": Config.experimental,
+        "confirm": Config.confirm,
+        "uitheme": Config.uitheme,
         "client_master": client_master,
         "current_item": current_item,
         "current_stack": current_stack,
         "platform": os_platform,
-        "defgain": defgain,
+        "defgain": Config.init_gain,
         "current_exp": current_exp,
     }
 
 
 def get_context(telescope_id, req):
-    if (
-        telescope_id not in _context_cached
-        or time.time() - _last_context_get_time[telescope_id] > 1.0
-    ):
-        _last_context_get_time[telescope_id] = time.time()
+    current_time = time.time()
+    cached_time = pydash.get(_last_context_get_time, telescope_id, 0)
+
+    if telescope_id not in _context_cached or current_time - cached_time > 1.0:
+        _last_context_get_time[telescope_id] = current_time
         _context_cached[telescope_id] = _get_context_real(telescope_id, req)
-    return _context_cached[telescope_id]
+
+    return pydash.get(_context_cached, telescope_id)
 
 
 def get_flash_cookie(req, resp):
@@ -502,14 +490,20 @@ def _check_api_state_cached(telescope_id):
         r = requests.get(url, timeout=Config.timeout)
         r.raise_for_status()
         response = r.json()
-        if response.get("ErrorNumber") == 1031 or not response.get("Value"):
+
+        error_number = pydash.get(response, "ErrorNumber")
+        value = pydash.get(response, "Value")
+
+        if error_number == 1031 or not value:
             logger.warn(f"Telescope {telescope_id} API is not connected. {url=}")
             return False
+
     except requests.exceptions.ConnectionError:
         logger.warn(
             f"Telescope {telescope_id} API is not online. (ConnectionError) {url=}"
         )
         return False
+
     except requests.exceptions.RequestException:
         logger.warn(
             f"Telescope {telescope_id} API is not online. (RequestException) {url=}"
@@ -521,13 +515,21 @@ def _check_api_state_cached(telescope_id):
 
 
 def check_api_state(telescope_id):
+    current_time = time.time()
+
+    cached_time = pydash.get(_last_api_state_get_time, telescope_id, 0)
+    cached_state = pydash.get(_api_state_cached, telescope_id)
+
     if (
-        telescope_id not in _api_state_cached
-        or time.time() - _last_api_state_get_time[telescope_id] > 1.0
+        cached_state is None  # telescope_id not in cache
+        or current_time - cached_time > 1.0
     ):
-        _last_api_state_get_time[telescope_id] = time.time()
+        _last_api_state_get_time[telescope_id] = current_time
         _api_state_cached[telescope_id] = _check_api_state_cached(telescope_id)
-    return _api_state_cached[telescope_id]
+
+    return pydash.get(
+        _api_state_cached, telescope_id, False
+    )  # Default to False if missing
 
 
 def check_internet_connection():

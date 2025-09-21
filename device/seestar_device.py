@@ -1776,7 +1776,7 @@ class Seestar:
         center_Dec = parsed_coord.dec.deg
 
         response = self.send_message_param_sync({"method": "get_setting"})
-        result = response["result"]
+        result = pydash.get(response, "result", {})
         self.logger.info(f"get_setting response: {result}")
 
         # print input requests
@@ -1794,14 +1794,13 @@ class Seestar:
         self.logger.info("  overlap %%    : %s", overlap_percent)
         self.logger.info("  gain          : %s", gain)
         self.logger.info(
-            "  exposure time : %s", result.get("exp_ms", {}).get("stack_l", "N/A")
+            "  exposure time : %s", pydash.get(result, "exp_ms.stack_l", "N/A")
         )
         self.logger.info(
-            "  dither pixLen : %s", result.get("stack_dither", {}).get("pix", "N/A")
+            "  dither pixLen : %s", pydash.get(result, "stack_dither.pix", "N/A")
         )
         self.logger.info(
-            "  dither interv : %s",
-            result.get("stack_dither", {}).get("interval", "N/A"),
+            "  dither interv : %s", pydash.get(result, "stack_dither.interval", "N/A")
         )
         self.logger.info("  use autofocus : %s", is_use_autofocus)
         self.logger.info("  select panels : %s", selected_panels)
