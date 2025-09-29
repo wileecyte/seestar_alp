@@ -14,7 +14,7 @@
 
         .aladin-projection-control button {
             position: relative;
-            z-index: 9; 
+            z-index: 9;
         }
 
         .aladin-stack-control button {
@@ -35,7 +35,7 @@
 
         .aladin-fullScreen-control button {
             position: relative;
-            z-index: 9; 
+            z-index: 9;
         }
     </style>
 {% endblock %}
@@ -73,11 +73,11 @@
 <div id="day-div" style="height:300px; width: 100%; max-width: 100% !important;"></div>
 <div id="year-div" style="height:300px; width: 100%; max-width: 100% !important;"></div>
 <dialog id="send_to_schedule_modal">
-    <form method="post" action="/{{ telescope["device_num"] }}/schedule/mosaic">
+    <form method="post" action="/{{ telescope['device_num'] }}/schedule/mosaic">
         <div class="card border-primary mb-3">
             <div class="card-body">
                 <h5 class="card-title">Target</h5>
-    
+
                 <div class="mb-3 row">
                     <div class="col">
                         <label for="targetName" class="form-label">Target Name</label>
@@ -100,13 +100,13 @@
                         <div class="form-text">Enter target name, select type, and press the button to retrieve RA/Dec from Simbad / Planet Server.</div>
                     </div>
                 </div>
-    
+
                 <div class="mb-3 row">
                     <div class="col">
                         <label for="ra" class="form-label">Right Ascension</label>
                         <input type="text" class="form-control" id="ra" name="ra" aria-describedby="raHelp" required>
                         <div id="raHelp" class="form-text">Mosaic center in decimal hours or hours/minutes/seconds (e.g. -1.2 or
-                            6h32m32.5s)						
+                            6h32m32.5s)
                         </div>
                     </div>
                     <div class="col">
@@ -115,10 +115,10 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard-fill" viewBox="0 0 16 16">
                                 <path fill-rule="evenodd" d="M10 1.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5zm-5 0A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5v1A1.5 1.5 0 0 1 9.5 4h-3A1.5 1.5 0 0 1 5 2.5zm-2 0h1v1A2.5 2.5 0 0 0 6.5 5h3A2.5 2.5 0 0 0 12 2.5v-1h1a2 2 0 0 1 2 2V14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3.5a2 2 0 0 1 2-2"/>
                               </svg>
-                        </button>                    
+                        </button>
                         <div id="targetNameHelp" class="form-text">Paste RA/Dec from Clipboard</div>
                     </div>
-    
+
                     <div class="col">
                         <label for="raPanels" class="form-label">&nbsp;</label>
                         <input type="text" class="form-control" id="raPanels" name="raPanels"
@@ -131,20 +131,20 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star-fill" viewBox="0 0 16 16">
                                 <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
                               </svg>
-                        </button>                    
+                        </button>
                         <div id="targetNameHelp" class="form-text">Retreive RA/Dec from Stellarium</div>
                     </div>
                 </div>
-    
+
                 <div class="mb-3 row">
                     <div class="col">
                         <label for="dec" class="form-label">Declination</label>
                         <input type="text" class="form-control" id="dec" name="dec" aria-describedby="decHelp" required>
                         <div id="decHelp" class="form-text">Mosaic center in decimal degrees or degrees/minutes/seconds (e.g. -1.2 or
-                            +6d32m32.5s)						
+                            +6d32m32.5s)
                         </div>
                     </div>
-    
+
                     <div class="col">
                         <label for="decPanels" class="form-label">&nbsp;</label>
                         <input type="text" class="form-control" id="decPanels" name="decPanels"
@@ -152,7 +152,7 @@
                         <div id="decPanelsHelp" class="form-text">Number of Dec panels</div>
                     </div>
                 </div>
-    
+
                 <div class="mb-3 row">
                     <div class="mb-3 col">
                         <label for="panelOverlap" class="form-label">Panel Overlap (%)</label>
@@ -187,11 +187,11 @@
                 {% endif %}
             </div>
         </div>
-    
+
         <div class="card border-primary mb-3">
             <div class="card-body">
                 <h5 class="card-title">Exposure</h5>
-    
+
                 <div class="mb-3">
                     <label for="panelTime" class="form-label">Panel Acquisition Time</label>
                     <input type="text" class="form-control" id="panelTime" name="panelTime"
@@ -199,12 +199,12 @@
                     <div id="panelTimeHelp" class="form-text">How much time to acquire data for each panel (ex: 1h 30m or 5400).
                     </div>
                 </div>
-    
+
                 <div class="mb-3">
                         <input type="text" class="form-control" id="gain" name="gain" aria-describedby="gainHelp" value="80" required>
                     <div id="gainHelp" class="form-text">Gain. (ex: 80)</div>
                 </div>
-    
+
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="useLpFilter" name="useLpFilter">
@@ -221,11 +221,11 @@
                         </label>
                     </div>
                 </div>
-    
+
             </div>
         </div>
         <button type="submit" class="btn btn-primary">Submit</button><button type="reset" class="btn btn-primary float-end" id="close_send_to_schedule_modal_btn">Close</button>
-    </form>        
+    </form>
 </dialog>
 <script>
     // Default settings.
@@ -293,6 +293,7 @@
         document.getElementById('targetName').value = document.getElementById('astro_mosaic_search_text').value;
         document.getElementById('raPanels').value = astro_mosaic_grid_x;
         document.getElementById('decPanels').value = astro_mosaic_grid_y;
+        document.getElementById('useJ2000').checked = true;
         if(astro_mosaic_grid_x == 1 && astro_mosaic_grid_y ==1){
             document.getElementById('panelOverlap').value = 100
         }else{
@@ -311,7 +312,7 @@
     function close_send_to_schedule_modal() {
         send_to_schedule_modal.close();
     }
-    
+
     document.addEventListener('click', (event) => {
         if (event.target === send_to_schedule_modal) {
             // Click occurred outside the dialog
