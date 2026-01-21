@@ -154,6 +154,7 @@ class _Config:
         self.can_reverse: bool = self.get_toml("device", "can_reverse", True)
         self.step_size: float = self.get_toml("device", "step_size", 1.0)
         self.steps_per_sec: int = self.get_toml("device", "steps_per_sec", 6)
+        self.verify_injection: bool = self.get_toml("device", "verify_injection", False)
         if "seestars" in self._dict:
             self.seestars = self._dict["seestars"]
         else:
