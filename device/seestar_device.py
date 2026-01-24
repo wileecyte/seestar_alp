@@ -446,9 +446,14 @@ class Seestar:
         self.send_message(json_data + "\r\n")
         return cur_cmdid
 
+    def should_inject_verify(self) -> bool:
+        return Config.verify_injection and (
+            self.firmware_ver_int == 0 or self.firmware_ver_int > 2582
+        )
+
     def transform_message_for_verify(self, data: MessageParams) -> MessageParams:
         data = copy.deepcopy(data)
-        if not Config.verify_injection:
+        if not self.should_inject_verify():
             return data
         else:
             if "params" in data:
@@ -2455,6 +2460,16 @@ class Seestar:
                 initial_state = self.send_message_param_sync(
                     {"method": "get_device_state"}
                 )
+                if self.firmware_ver_int == 0:
+                    try:
+                        self.firmware_ver_int = initial_state["result"]["device"][
+                            "firmware_ver_int"
+                        ]
+                        self.logger.info(
+                            f"Firmware version (watch init): {self.firmware_ver_int}"
+                        )
+                    except Exception:
+                        pass
                 # move start of heartbeat thread to here to avoid error with simulator
                 self.heartbeat_msg_thread.start()
 
