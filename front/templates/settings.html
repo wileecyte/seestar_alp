@@ -4,11 +4,17 @@
     <meta http-equiv="Cache-Control" content="no-cache">
     <div class="container mt-3">
         <h1>{% block title %}Settings{% endblock %}</h1>
+        {% if firmware_ver_int is defined %}
+            {% set fw = firmware_ver_int|int %}
+            <div class="form-text">Firmware: {{ fw }}</div>
+        {% endif %}
     </div>
 {% endblock %}
 
 {% block content %}
-
+    {% if firmware_ver_int is defined %}
+        {% set fw = firmware_ver_int|int %}
+    {% endif %}
     {% if client_master and online and settings %}
         <div class="container mt-3">
             {% if output %}
