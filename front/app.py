@@ -925,17 +925,27 @@ def get_device_settings(telescope_id):
                 ),
                 "stack_capt_type": pydash.get(stack_settings_result, "capt_type"),
                 "stack_capt_num": pydash.get(stack_settings_result, "capt_num"),
-                "stack_brightness": pydash.get(stack_settings_result, "brightness", 0.0),
+                "stack_brightness": pydash.get(
+                    stack_settings_result, "brightness", 0.0
+                ),
                 "stack_contrast": pydash.get(stack_settings_result, "contrast", 0.0),
-                "stack_saturation": pydash.get(stack_settings_result, "saturation", 0.0),
-                "stack_dbe_enable": pydash.get(stack_settings_result, "dbe_enable", False),
+                "stack_saturation": pydash.get(
+                    stack_settings_result, "saturation", 0.0
+                ),
+                "stack_dbe_enable": pydash.get(
+                    stack_settings_result, "dbe_enable", False
+                ),
                 "plan_target_af": pydash.get(settings_result, "plan_target_af", False),
-                "viewplan_gohome": pydash.get(settings_result, "viewplan_gohome", False),
+                "viewplan_gohome": pydash.get(
+                    settings_result, "viewplan_gohome", False
+                ),
                 "expert_mode": pydash.get(settings_result, "expert_mode", False),
             }
         else:
             settings |= {
-                "af_before_stack": pydash.get(settings_result, "af_before_stack", False),
+                "af_before_stack": pydash.get(
+                    settings_result, "af_before_stack", False
+                ),
                 "stack_star_trails": pydash.get(
                     settings_result, "stack.star_trails", False
                 ),
@@ -3422,15 +3432,11 @@ class SettingsResource(BaseResource):
                 "brightness": _safe_float(
                     PostedSettings.get("stack_brightness", 0.0), 0.0
                 ),
-                "contrast": _safe_float(
-                    PostedSettings.get("stack_contrast", 0.0), 0.0
-                ),
+                "contrast": _safe_float(PostedSettings.get("stack_contrast", 0.0), 0.0),
                 "saturation": _safe_float(
                     PostedSettings.get("stack_saturation", 0.0), 0.0
                 ),
-                "dbe_enable": str2bool(
-                    PostedSettings.get("stack_dbe_enable", False)
-                ),
+                "dbe_enable": str2bool(PostedSettings.get("stack_dbe_enable", False)),
             }
 
         # Dew Heater is wierd
@@ -3499,7 +3505,10 @@ class SettingsResource(BaseResource):
             stack_settings_output = do_action_device(
                 "method_sync",
                 telescope_id,
-                {"method": "set_setting", "params": {"stack": FormattedNewStackSettings}},
+                {
+                    "method": "set_setting",
+                    "params": {"stack": FormattedNewStackSettings},
+                },
             )
         else:
             stack_settings_output = do_action_device(
