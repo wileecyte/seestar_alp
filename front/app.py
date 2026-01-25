@@ -858,6 +858,14 @@ def get_device_settings(telescope_id):
         settings_result = method_sync("get_setting", telescope_id)
         stack_settings_result = method_sync("get_stack_setting", telescope_id)
 
+        # Some firmware builds don't support get_stack_setting; fall back to get_setting.
+        fallback_light_duration_min = pydash.get(
+            settings_result, "stack.light_duration_min"
+        )
+        stack_settings_error = (
+            stack_settings_result is None or "error" in stack_settings_result
+        )
+
         settings = {
             "stack_dither_pix": pydash.get(settings_result, "stack_dither.pix"),
             "stack_dither_interval": pydash.get(
@@ -872,8 +880,10 @@ def get_device_settings(telescope_id):
             "save_discrete_frame": pydash.get(
                 stack_settings_result, "save_discrete_frame"
             ),
-            "light_duration_min": pydash.get(
-                stack_settings_result, "light_duration_min"
+            "light_duration_min": (
+                fallback_light_duration_min
+                if stack_settings_error
+                else pydash.get(stack_settings_result, "light_duration_min")
             ),
             "auto_3ppa_calib": pydash.get(settings_result, "auto_3ppa_calib"),
             "frame_calib": pydash.get(settings_result, "frame_calib"),
@@ -3304,20 +3314,27 @@ class SettingsResource(BaseResource):
 
     def on_post(self, req, resp, telescope_id=0):
         PostedSettings = req.media
+        def _safe_int(value, default):
+            try:
+                if value in (None, "", "None"):
+                    return default
+                return int(value)
+            except (TypeError, ValueError):
+                return default
 
         # Convert the form names back into the required format
         FormattedNewSettings = {
             "stack_lenhance": str2bool(PostedSettings["stack_lenhance"]),
             "stack_dither": {
-                "pix": int(PostedSettings["stack_dither_pix"]),
-                "interval": int(PostedSettings["stack_dither_interval"]),
+                "pix": _safe_int(PostedSettings["stack_dither_pix"], 0),
+                "interval": _safe_int(PostedSettings["stack_dither_interval"], 0),
                 "enable": str2bool(PostedSettings["stack_dither_enable"]),
             },
             "exp_ms": {
-                "stack_l": int(PostedSettings["exp_ms_stack_l"]),
-                "continuous": int(PostedSettings["exp_ms_continuous"]),
+                "stack_l": _safe_int(PostedSettings["exp_ms_stack_l"], 0),
+                "continuous": _safe_int(PostedSettings["exp_ms_continuous"], 0),
             },
-            "focal_pos": int(PostedSettings["focal_pos"]),
+            "focal_pos": _safe_int(PostedSettings["focal_pos"], 0),
             "auto_power_off": str2bool(PostedSettings["auto_power_off"]),
             "auto_3ppa_calib": str2bool(PostedSettings["auto_3ppa_calib"]),
             "frame_calib": str2bool(PostedSettings["frame_calib"]),
@@ -3329,7 +3346,9 @@ class SettingsResource(BaseResource):
             "save_discrete_ok_frame": str2bool(
                 PostedSettings["save_discrete_ok_frame"]
             ),
-            "light_duration_min": int(PostedSettings["light_duration_min"]),
+            "light_duration_min": _safe_int(
+                PostedSettings["light_duration_min"], -1
+            ),
         }
 
         # Dew Heater is wierd

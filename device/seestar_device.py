@@ -447,8 +447,9 @@ class Seestar:
         return cur_cmdid
 
     def should_inject_verify(self) -> bool:
+        firmware_ver_int = getattr(self, "firmware_ver_int", 0)
         return Config.verify_injection and (
-            self.firmware_ver_int == 0 or self.firmware_ver_int > 2582
+            firmware_ver_int == 0 or firmware_ver_int > 2582
         )
 
     def transform_message_for_verify(self, data: MessageParams) -> MessageParams:
@@ -458,6 +459,12 @@ class Seestar:
         else:
             if "params" in data:
                 existing_params = data.get("params")
+
+                if isinstance(existing_params, dict):
+                    if "verify" not in existing_params:
+                        existing_params["verify"] = True
+                    data["params"] = existing_params
+                    return data
 
                 if isinstance(existing_params, list) and existing_params:
                     if existing_params[-1] == "verify":

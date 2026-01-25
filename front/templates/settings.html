@@ -22,6 +22,11 @@
                             <th class="col">
                                 {{ settings_friendly_names[key] }}
                                 <div class="form-text">{{ settings_helper_text[key] }}</div>
+                                {% if key == "light_duration_min" and value == -1 %}
+                                    <div class="form-text">
+                                        Your firmware may not support stack settings; using the device default (-1).
+                                    </div>
+                                {% endif %}
                             </th>
                             {% if value is true or value is false %}
                                 <td>
