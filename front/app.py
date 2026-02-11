@@ -675,6 +675,13 @@ def get_client_master(telescope_id):
     return client_master
 
 
+def get_firmware_ver_int(telescope_id):
+    if check_api_state(telescope_id):
+        state = method_sync("get_device_state", telescope_id)
+        return pydash.get(state, "device.firmware_ver_int", 0)
+    return 0
+
+
 def get_guestmode_state(telescope_id):
     state = {}
     if check_api_state(telescope_id):
@@ -855,8 +862,29 @@ def get_device_settings(telescope_id):
 
     settings = None
     if get_client_master(telescope_id):
+        fw = get_firmware_ver_int(telescope_id)
         settings_result = method_sync("get_setting", telescope_id)
-        stack_settings_result = method_sync("get_stack_setting", telescope_id)
+        stack_settings_result = {}
+        stack_settings_error = False
+
+        if fw > 2597:
+            stack_settings_result = pydash.get(settings_result, "stack", {})
+        else:
+            stack_settings_result = method_sync("get_stack_setting", telescope_id)
+            stack_settings_error = (
+                stack_settings_result is None or "error" in stack_settings_result
+            )
+
+        # Some firmware builds don't support get_stack_setting; fall back to get_setting.
+        fallback_light_duration_min = pydash.get(
+            settings_result, "stack.light_duration_min"
+        )
+        fallback_save_discrete_ok_frame = pydash.get(
+            settings_result, "stack.save_discrete_ok_frame", False
+        )
+        fallback_save_discrete_frame = pydash.get(
+            settings_result, "stack.save_discrete_frame", False
+        )
 
         settings = {
             "stack_dither_pix": pydash.get(settings_result, "stack_dither.pix"),
@@ -866,15 +894,6 @@ def get_device_settings(telescope_id):
             "stack_dither_enable": pydash.get(settings_result, "stack_dither.enable"),
             "exp_ms_stack_l": pydash.get(settings_result, "exp_ms.stack_l"),
             "exp_ms_continuous": pydash.get(settings_result, "exp_ms.continuous"),
-            "save_discrete_ok_frame": pydash.get(
-                stack_settings_result, "save_discrete_ok_frame"
-            ),
-            "save_discrete_frame": pydash.get(
-                stack_settings_result, "save_discrete_frame"
-            ),
-            "light_duration_min": pydash.get(
-                stack_settings_result, "light_duration_min"
-            ),
             "auto_3ppa_calib": pydash.get(settings_result, "auto_3ppa_calib"),
             "frame_calib": pydash.get(settings_result, "frame_calib"),
             "manual_exp": pydash.get(settings_result, "manual_exp"),
@@ -886,6 +905,51 @@ def get_device_settings(telescope_id):
             "stack_cont_capt": pydash.get(settings_result, "stack.cont_capt"),
             "stack_drizzle2x": pydash.get(settings_result, "stack.drizzle2x"),
         }
+
+        if fw > 2597:
+            settings |= {
+                "save_discrete_ok_frame": pydash.get(
+                    stack_settings_result,
+                    "save_discrete_ok_frame",
+                    fallback_save_discrete_ok_frame,
+                ),
+                "save_discrete_frame": pydash.get(
+                    stack_settings_result,
+                    "save_discrete_frame",
+                    fallback_save_discrete_frame,
+                ),
+                "light_duration_min": (
+                    fallback_light_duration_min
+                    if stack_settings_error
+                    else pydash.get(stack_settings_result, "light_duration_min")
+                ),
+                "stack_capt_type": pydash.get(stack_settings_result, "capt_type"),
+                "stack_capt_num": pydash.get(stack_settings_result, "capt_num"),
+                "stack_brightness": pydash.get(
+                    stack_settings_result, "brightness", 0.0
+                ),
+                "stack_contrast": pydash.get(stack_settings_result, "contrast", 0.0),
+                "stack_saturation": pydash.get(
+                    stack_settings_result, "saturation", 0.0
+                ),
+                "stack_dbe_enable": pydash.get(
+                    stack_settings_result, "dbe_enable", False
+                ),
+                "plan_target_af": pydash.get(settings_result, "plan_target_af", False),
+                "viewplan_gohome": pydash.get(
+                    settings_result, "viewplan_gohome", False
+                ),
+                "expert_mode": pydash.get(settings_result, "expert_mode", False),
+            }
+        else:
+            settings |= {
+                "af_before_stack": pydash.get(
+                    settings_result, "af_before_stack", False
+                ),
+                "stack_star_trails": pydash.get(
+                    settings_result, "stack.star_trails", False
+                ),
+            }
     return settings
 
 
@@ -3304,33 +3368,76 @@ class SettingsResource(BaseResource):
 
     def on_post(self, req, resp, telescope_id=0):
         PostedSettings = req.media
+        fw = get_firmware_ver_int(telescope_id)
+
+        def _safe_int(value, default):
+            try:
+                if value in (None, "", "None"):
+                    return default
+                return int(value)
+            except (TypeError, ValueError):
+                return default
+
+        def _safe_float(value, default):
+            try:
+                if value in (None, "", "None"):
+                    return default
+                return float(value)
+            except (TypeError, ValueError):
+                return default
 
         # Convert the form names back into the required format
         FormattedNewSettings = {
             "stack_lenhance": str2bool(PostedSettings["stack_lenhance"]),
             "stack_dither": {
-                "pix": int(PostedSettings["stack_dither_pix"]),
-                "interval": int(PostedSettings["stack_dither_interval"]),
+                "pix": _safe_int(PostedSettings["stack_dither_pix"], 0),
+                "interval": _safe_int(PostedSettings["stack_dither_interval"], 0),
                 "enable": str2bool(PostedSettings["stack_dither_enable"]),
             },
             "exp_ms": {
-                "stack_l": int(PostedSettings["exp_ms_stack_l"]),
-                "continuous": int(PostedSettings["exp_ms_continuous"]),
+                "stack_l": _safe_int(PostedSettings["exp_ms_stack_l"], 0),
+                "continuous": _safe_int(PostedSettings["exp_ms_continuous"], 0),
             },
-            "focal_pos": int(PostedSettings["focal_pos"]),
+            "focal_pos": _safe_int(PostedSettings["focal_pos"], 0),
             "auto_power_off": str2bool(PostedSettings["auto_power_off"]),
             "auto_3ppa_calib": str2bool(PostedSettings["auto_3ppa_calib"]),
             "frame_calib": str2bool(PostedSettings["frame_calib"]),
             "manual_exp": str2bool(PostedSettings["manual_exp"]),
         }
 
-        FormattedNewStackSettings = {
-            "save_discrete_frame": str2bool(PostedSettings["save_discrete_frame"]),
-            "save_discrete_ok_frame": str2bool(
-                PostedSettings["save_discrete_ok_frame"]
-            ),
-            "light_duration_min": int(PostedSettings["light_duration_min"]),
-        }
+        if fw >= 2670:
+            FormattedNewSettings |= {
+                "plan_target_af": str2bool(PostedSettings["plan_target_af"]),
+                "viewplan_gohome": str2bool(PostedSettings["viewplan_gohome"]),
+                "expert_mode": str2bool(PostedSettings["expert_mode"]),
+            }
+        else:
+            if "af_before_stack" in PostedSettings:
+                FormattedNewSettings |= {
+                    "af_before_stack": str2bool(PostedSettings["af_before_stack"])
+                }
+
+        FormattedNewStackSettings = {}
+        if fw > 2597:
+            FormattedNewStackSettings = {
+                "save_discrete_frame": str2bool(PostedSettings["save_discrete_frame"]),
+                "save_discrete_ok_frame": str2bool(
+                    PostedSettings["save_discrete_ok_frame"]
+                ),
+                "light_duration_min": _safe_int(
+                    PostedSettings["light_duration_min"], -1
+                ),
+                "capt_type": PostedSettings.get("stack_capt_type", "stack"),
+                "capt_num": _safe_int(PostedSettings.get("stack_capt_num"), 0),
+                "brightness": _safe_float(
+                    PostedSettings.get("stack_brightness", 0.0), 0.0
+                ),
+                "contrast": _safe_float(PostedSettings.get("stack_contrast", 0.0), 0.0),
+                "saturation": _safe_float(
+                    PostedSettings.get("stack_saturation", 0.0), 0.0
+                ),
+                "dbe_enable": str2bool(PostedSettings.get("stack_dbe_enable", False)),
+            }
 
         # Dew Heater is wierd
         if str2bool(PostedSettings["heater_enable"]):
@@ -3384,11 +3491,31 @@ class SettingsResource(BaseResource):
             telescope_id,
             {"method": "set_setting", "params": DrizzleModeSettings},
         )
-        stack_settings_output = do_action_device(
-            "method_sync",
-            telescope_id,
-            {"method": "set_stack_setting", "params": FormattedNewStackSettings},
-        )
+        star_trails_output = {"ErrorNumber": 0}
+        if fw <= 2597 and "stack_star_trails" in PostedSettings:
+            StarTrailsSettings = {
+                "stack": {"star_trails": str2bool(PostedSettings["stack_star_trails"])}
+            }
+            star_trails_output = do_action_device(
+                "method_sync",
+                telescope_id,
+                {"method": "set_setting", "params": StarTrailsSettings},
+            )
+        if fw > 2597:
+            stack_settings_output = do_action_device(
+                "method_sync",
+                telescope_id,
+                {
+                    "method": "set_setting",
+                    "params": {"stack": FormattedNewStackSettings},
+                },
+            )
+        else:
+            stack_settings_output = do_action_device(
+                "method_sync",
+                telescope_id,
+                {"method": "set_stack_setting", "params": FormattedNewStackSettings},
+            )
 
         if (
             settings_output["ErrorNumber"]
@@ -3396,6 +3523,7 @@ class SettingsResource(BaseResource):
             or live_mode_output["ErrorNumber"]
             or dark_mode_output["ErrorNumber"]
             or drizzle_mode_output["ErrorNumber"]
+            or star_trails_output["ErrorNumber"]
         ):
             output = "Error Updating Settings."
         else:
@@ -3415,16 +3543,56 @@ class SettingsResource(BaseResource):
     def render_settings(req, resp, telescope_id, output):
         settings = {}
         context = get_context(telescope_id, req)
+        firmware_ver_int = 0
         if telescope_id == 0:
             telescopes = get_telescopes()
             for tel in telescopes:
                 tel_id = tel["device_num"]
                 if check_api_state(tel_id):
+                    firmware_ver_int = get_firmware_ver_int(tel_id)
                     settings = get_device_settings(tel_id)
                     break
         else:
             if context["online"]:
+                firmware_ver_int = get_firmware_ver_int(telescope_id)
                 settings = get_device_settings(telescope_id)
+
+        min_fw_by_key = {
+            "stack_dither_pix": 0,
+            "stack_dither_interval": 0,
+            "stack_dither_enable": 0,
+            "exp_ms_stack_l": 0,
+            "exp_ms_continuous": 0,
+            "auto_3ppa_calib": 0,
+            "frame_calib": 0,
+            "manual_exp": 0,
+            "focal_pos": 0,
+            "heater_enable": 0,
+            "auto_power_off": 0,
+            "stack_lenhance": 0,
+            "dark_mode": 0,
+            "stack_cont_capt": 0,
+            "stack_drizzle2x": 0,
+            "save_discrete_ok_frame": 2598,
+            "save_discrete_frame": 2598,
+            "light_duration_min": 2598,
+            "stack_capt_type": 2598,
+            "stack_capt_num": 2598,
+            "stack_brightness": 2598,
+            "stack_contrast": 2598,
+            "stack_saturation": 2598,
+            "stack_dbe_enable": 2598,
+            "plan_target_af": 2670,
+            "viewplan_gohome": 2670,
+            "expert_mode": 2670,
+            "af_before_stack": 0,
+            "stack_star_trails": 0,
+        }
+        settings = {
+            key: value
+            for key, value in settings.items()
+            if firmware_ver_int >= min_fw_by_key.get(key, 0)
+        }
         # Maybe we can store this better?
         settings_friendly_names = {
             "stack_dither_pix": "Stack Dither Pixels",
@@ -3435,6 +3603,17 @@ class SettingsResource(BaseResource):
             "save_discrete_ok_frame": "Save Sub Frames",
             "save_discrete_frame": "Save Failed Sub Frames",
             "light_duration_min": "Light Duration Min",
+            "stack_capt_type": "Stack Capture Type",
+            "stack_capt_num": "Stack Capture Count",
+            "stack_brightness": "Stack Brightness",
+            "stack_contrast": "Stack Contrast",
+            "stack_saturation": "Stack Saturation",
+            "stack_dbe_enable": "Stack DBE",
+            "plan_target_af": "Plan Target AF",
+            "viewplan_gohome": "Viewplan Go Home",
+            "expert_mode": "Expert Mode",
+            "af_before_stack": "AF Before Stack",
+            "stack_star_trails": "Stack Star Trails",
             "auto_3ppa_calib": "Horizontal Calibration",
             "frame_calib": "Frame Calibration",
             "stack_masic": "Stack Mosaic",
@@ -3463,6 +3642,17 @@ class SettingsResource(BaseResource):
             "save_discrete_ok_frame": "Save sub frames. (Doesn't include failed.)",
             "save_discrete_frame": 'Save failed sub frames. (Failed sub frames will have "_failed" added to their filename.)',
             "light_duration_min": "Light Duration Min.",
+            "stack_capt_type": "Stack capture mode/type.",
+            "stack_capt_num": "Number of frames to capture.",
+            "stack_brightness": "Adjust live stack brightness.",
+            "stack_contrast": "Adjust live stack contrast.",
+            "stack_saturation": "Adjust live stack saturation.",
+            "stack_dbe_enable": "Enable Dynamic Background Extraction.",
+            "plan_target_af": "Auto-focus before planned targets.",
+            "viewplan_gohome": "Return home after plan view.",
+            "expert_mode": "Enable expert mode features.",
+            "af_before_stack": "Auto-focus before stacking.",
+            "stack_star_trails": "Enable star trails stacking.",
             "auto_3ppa_calib": "In AltAz mode, enable/disable automatic horizontal calibration at the start of an imaging session",
             "frame_calib": "Frame Calibration",
             "stack_masic": "Stack Mosaic",
@@ -3489,6 +3679,7 @@ class SettingsResource(BaseResource):
             settings_friendly_names=settings_friendly_names,
             settings_helper_text=settings_helper_text,
             output=output,
+            firmware_ver_int=firmware_ver_int,
             **context,
         )
 

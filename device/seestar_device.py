@@ -8,6 +8,7 @@ import math
 import uuid
 from time import sleep
 import collections
+import copy
 from typing import Optional, Any, TypedDict, NotRequired
 
 import pydash
@@ -190,6 +191,7 @@ class Seestar:
                 time.sleep(3)
                 return False
             # todo : don't send if not connected or socket is null?
+            self.logger.debug(f"sending: {data}")
             self.s.sendall(
                 data.encode()
             )  # TODO: would utf-8 or unicode_escaped help here
@@ -433,24 +435,51 @@ class Seestar:
         data = {"id": self.cmdid, "method": instruction, **kwargs}
         self.cmdid += 1
         json_data = json.dumps(data)
-        if instruction == "scope_get_equ_coord":
-            self.logger.debug(f"sending: {json_data}")
-        else:
-            self.logger.debug(f"sending: {json_data}")
         self.send_message(json_data + "\r\n")
 
     def send_message_param(self, data: MessageParams) -> int:
+        data = self.transform_message_for_verify(data)
         cur_cmdid = data.get("id") or self.cmdid
         data["id"] = cur_cmdid
         self.cmdid += 1  # can this overflow?  not in JSON...
         json_data = json.dumps(data)
-        if "method" in data and data["method"] == "scope_get_equ_coord":
-            self.logger.debug(f"sending: {json_data}")
-        else:
-            self.logger.debug(f"sending: {json_data}")
-
         self.send_message(json_data + "\r\n")
         return cur_cmdid
+
+    def should_inject_verify(self) -> bool:
+        firmware_ver_int = getattr(self, "firmware_ver_int", 0)
+        return Config.verify_injection and (
+            firmware_ver_int == 0 or firmware_ver_int > 2582
+        )
+
+    def transform_message_for_verify(self, data: MessageParams) -> MessageParams:
+        data = copy.deepcopy(data)
+        if not self.should_inject_verify():
+            return data
+        else:
+            if "params" in data:
+                existing_params = data.get("params")
+
+                if isinstance(existing_params, dict):
+                    if "verify" not in existing_params:
+                        existing_params["verify"] = True
+                    data["params"] = existing_params
+                    return data
+
+                if isinstance(existing_params, list) and existing_params:
+                    if existing_params[-1] == "verify":
+                        return data
+
+                if data.get("method") == "set_wheel_position" and isinstance(
+                    existing_params, list
+                ):
+                    data["params"] = existing_params + ["verify"]
+                else:
+                    data["params"] = [existing_params, "verify"]
+            else:
+                data["params"] = ["verify"]
+
+        return data
 
     def shut_down_thread(self, data):
         self.play_sound(13)
@@ -2438,6 +2467,16 @@ class Seestar:
                 initial_state = self.send_message_param_sync(
                     {"method": "get_device_state"}
                 )
+                if self.firmware_ver_int == 0:
+                    try:
+                        self.firmware_ver_int = initial_state["result"]["device"][
+                            "firmware_ver_int"
+                        ]
+                        self.logger.info(
+                            f"Firmware version (watch init): {self.firmware_ver_int}"
+                        )
+                    except Exception:
+                        pass
                 # move start of heartbeat thread to here to avoid error with simulator
                 self.heartbeat_msg_thread.start()
 

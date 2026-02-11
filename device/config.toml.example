@@ -33,6 +33,7 @@ verbose_driver_exceptions = true
 can_reverse = true
 step_size = 1.0
 steps_per_sec = 6
+verify_injection = true
 
 
 [seestar_initialization]
