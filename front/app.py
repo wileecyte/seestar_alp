@@ -4283,9 +4283,10 @@ class ConfigResource:
         now = datetime.now()
         context = get_context(telescope_id, req)
 
-        logger.info(f"GOT POST config: {req.media}")
         Config.load_from_form(req)
         Config.save_toml()
+
+        logger.info(f"GOT POST config: {req.media}")
 
         render_template(req, resp, "config.html", now=now, config=Config, **context)
 
