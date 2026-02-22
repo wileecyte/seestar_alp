@@ -88,7 +88,11 @@ class _Config:
         else:
             return default
 
-    def load(self, toml_path):
+    def load(self, toml_path, preloaded_dict=None):
+        if preloaded_dict is not None:
+            self._dict = preloaded_dict
+        else:
+            self._dict = tomlkit.loads(open(toml_path).read())
         """
         Load a config.toml file into a Config object.
 
@@ -98,8 +102,6 @@ class _Config:
               - def render_config_html to add/remove html form representation
               - def load_from_form (below) to update this object when the form is submitted
         """
-        self._dict = tomlkit.loads(open(toml_path).read())
-
         """Device configuration in ``config.toml``"""
         # ---------------
         # Network Section
@@ -233,8 +235,6 @@ class _Config:
         """
         Save the config html form into a toml file
         """
-        req.get_media()
-
         # Reset arrays
         self.seestars = []
         self._dict["seestars"].clear()
@@ -393,6 +393,7 @@ class _Config:
             "battery_low_limit",
             int(req.media["battery_low_limit"]),
         )
+        self.load(self.path_to_dat, preloaded_dict=self._dict)
 
     def load_toml(self, load_name=None):
         """
