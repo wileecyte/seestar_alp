@@ -896,7 +896,6 @@ def get_device_settings(telescope_id):
             "exp_ms_continuous": pydash.get(settings_result, "exp_ms.continuous"),
             "auto_3ppa_calib": pydash.get(settings_result, "auto_3ppa_calib"),
             "frame_calib": pydash.get(settings_result, "frame_calib"),
-            "manual_exp": pydash.get(settings_result, "manual_exp"),
             "focal_pos": pydash.get(settings_result, "focal_pos"),
             "heater_enable": pydash.get(settings_result, "heater_enable"),
             "auto_power_off": pydash.get(settings_result, "auto_power_off"),
@@ -3104,11 +3103,6 @@ class LiveGainResource:
         # print("LiveFocusResource.post", increment)
 
         if 0 <= gain <= 300:
-            do_action_device(
-                "method_sync",
-                telescope_id,
-                {"method": "set_setting", "params": {"manual_exp": True}},
-            )
             output = do_action_device(
                 "method_sync",
                 telescope_id,
@@ -3136,11 +3130,6 @@ class LiveExposureResource:
         # print("LiveFocusResource.post", increment)
 
         if 1 <= exposure <= 200:
-            do_action_device(
-                "method_sync",
-                telescope_id,
-                {"method": "set_setting", "params": {"manual_exp": True}},
-            )
             output = do_action_device(
                 "method_sync",
                 telescope_id,
@@ -3402,7 +3391,6 @@ class SettingsResource(BaseResource):
             "auto_power_off": str2bool(PostedSettings["auto_power_off"]),
             "auto_3ppa_calib": str2bool(PostedSettings["auto_3ppa_calib"]),
             "frame_calib": str2bool(PostedSettings["frame_calib"]),
-            "manual_exp": str2bool(PostedSettings["manual_exp"]),
         }
 
         if fw >= 2670:
@@ -3565,7 +3553,6 @@ class SettingsResource(BaseResource):
             "exp_ms_continuous": 0,
             "auto_3ppa_calib": 0,
             "frame_calib": 0,
-            "manual_exp": 0,
             "focal_pos": 0,
             "heater_enable": 0,
             "auto_power_off": 0,
@@ -3618,7 +3605,6 @@ class SettingsResource(BaseResource):
             "frame_calib": "Frame Calibration",
             "stack_masic": "Stack Mosaic",
             "rec_stablzn": "Record Stabilization",
-            "manual_exp": "Manual Exposure",
             "isp_exp_ms": "isp_exp_ms",
             "calib_location": "calib_location",
             "wide_cam": "Wide Cam",
@@ -3657,7 +3643,6 @@ class SettingsResource(BaseResource):
             "frame_calib": "Frame Calibration",
             "stack_masic": "Stack Mosaic",
             "rec_stablzn": "Record Stabilization",
-            "manual_exp": "Manual Exposure",
             "isp_exp_ms": "isp_exp_ms",
             "calib_location": "calib_location",
             "wide_cam": "Wide Cam",
