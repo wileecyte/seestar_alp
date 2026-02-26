@@ -416,8 +416,18 @@ class _Config:
         if save_name is None:
             save_name = self.path_to_dat
         print(f"save_toml: writing toml to {save_name}")
-        with open(save_name, "w") as toml_file:
-            toml_file.write(tomlkit.dumps(self._dict))
+
+        tmp_name = save_name + ".tmp"
+        try:
+            with open(tmp_name, "w") as toml_file:
+                toml_file.write(tomlkit.dumps(self._dict))
+                toml_file.flush()
+                os.fsync(toml_file.fileno())
+            os.replace(tmp_name, save_name)
+        except Exception:
+            if os.path.exists(tmp_name):
+                os.remove(tmp_name)
+            raise
 
     #
     # HTML config rendering
