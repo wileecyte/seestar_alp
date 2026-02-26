@@ -429,7 +429,6 @@ class _Config:
                 os.remove(tmp_name)
             raise
 
-
     #
     # HTML config rendering
     #
