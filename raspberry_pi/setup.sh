@@ -115,6 +115,7 @@ function systemd_service_setup {
 
   cat systemd/INDI.service | sed \
   -e "s|/home/.*/seestar_alp|$src_home|g" \
+  -e "s|^ExecStartPost=python3|ExecStartPost=$HOME/.pyenv/versions/ssc-3.13.5/bin/python3|" \
   -e "s|^User=.*|User=${user}|g" > /tmp/INDI.service
 
   sudo chown root:root /tmp/seestar.service /tmp/INDI.service /tmp/seestar.env
