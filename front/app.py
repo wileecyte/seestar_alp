@@ -53,6 +53,9 @@ _context_cached = {}
 _last_api_state_get_time = {}
 _api_state_cached = {}
 
+S50_STR = "Seestar S50"
+S30_STR = "Seestar S30"
+S30_PRO_STR = "Seestar S30 Pro"
 
 def get_ip() -> str | None:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -909,7 +912,6 @@ def get_device_settings(telescope_id):
             "auto_power_off": pydash.get(settings_result, "auto_power_off"),
             "stack_lenhance": pydash.get(settings_result, "stack_lenhance"),
             "dark_mode": pydash.get(settings_result, "dark_mode"),
-            "stack_cont_capt": pydash.get(settings_result, "stack.cont_capt"),
             "stack_drizzle2x": pydash.get(settings_result, "stack.drizzle2x"),
         }
 
@@ -942,24 +944,21 @@ def get_device_settings(telescope_id):
                 "stack_dbe_enable": pydash.get(
                     stack_settings_result, "dbe_enable", False
                 ),
-                "plan_target_af": pydash.get(settings_result, "plan_target_af", False),
-                "viewplan_gohome": pydash.get(
-                    settings_result, "viewplan_gohome", False
-                ),
                 "expert_mode": pydash.get(settings_result, "expert_mode", False),
             }
-        else:
-            settings |= {
-                "af_before_stack": pydash.get(
-                    settings_result, "af_before_stack", False
-                ),
-            }
-            if model == "Seestar S30 Pro":
+            if model == S30_PRO_STR
                 settings |= {
                     "stack_star_trails": pydash.get(
                         settings_result, "stack.star_trails", False
                     ),
                 }
+        else:
+            settings |= {
+                "af_before_stack": pydash.get(
+                    settings_result, "af_before_stack", False
+                ),
+                "stack_cont_capt": pydash.get(settings_result, "stack.cont_capt"),
+            }
     return settings
 
 
